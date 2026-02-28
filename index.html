@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trading Sphere - Awealth</title>
+    <meta charset="UTF-8">
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: linear-gradient(135deg, #0072ff, #203a43, #2c5363);
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 25px;
+            border-radius: 12px;
+            width: 420px;
+            margin: auto;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border: none;
+        }
+
+        button {
+            padding: 12px;
+            width: 100%;
+            border-radius: 6px;
+            border: none;
+            background: #00c6ff;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0072ff;
+        }
+
+        .result {
+            margin-top: 15px;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .history {
+            margin-top: 20px;
+            font-size: 12px;
+            text-align: left;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>Trading Sphere</h1>
+<h3>by Awealth</h3>
+
+<div class="container">
+
+    <button onclick="googleLogin()">Login with Gmail</button>
+    <p id="user"></p>
+
+    <select id="tradeType">
+        <option>Crypto</option>
+        <option>Forex</option>
+        <option>Stocks</option>
+        <option>Commodities</option>
+    </select>
+
+    <select id="currency">
+        <option>USD</option>
+        <option>USDT</option>
+        <option>BTC</option>
+        <option>ETH</option>
+        <option>Gold</option>
+        <option>MNT</option>
+    </select>
+
+    <input type="number" id="balance" placeholder="Account Balance">
+    <input type="number" id="riskPercent" placeholder="Risk % (e.g 2)">
+    <input type="number" id="leverage" placeholder="Leverage (e.g 10)">
+    <input type="number" id="entry" placeholder="Entry Price">
+    <input type="number" id="tp" placeholder="Take Profit">
+    <input type="number" id="sl" placeholder="Stop Loss">
+
+    <button onclick="calculate()">Calculate</button>
+
+    <div class="result" id="output"></div>
+
+    <div class="history">
+        <h4>Trade History</h4>
+        <div id="historyList"></div>
+    </div>
+
+</div>
+
+<script>
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    appId: "YOUR_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+function googleLogin() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider)
+    .then(result => {
+        document.getElementById("user").innerText =
+            "Logged in as: " + result.user.email;
+    });
+}
+
+function calculate() {
+
+    let type = document.getElementById("tradeType").value;
+    let currency = document.getElementById("currency").value;
+    let balance = parseFloat(document.getElementById("balance").value);
+    let riskPercent = parseFloat(document.getElementById("riskPercent").value);
+    let leverage = parseFloat(document.getElementById("leverage").value);
+    let entry = parseFloat(document.getElementById("entry").value);
+    let tp = parseFloat(document.getElementById("tp").value);
+    let sl = parseFloat(document.getElementById("sl").value);
+
+    if (!balance || !riskPercent || !entry || !tp || !sl || !leverage) {
+        alert("Fill all fields correctly");
+        return;
+    }
+
+    let tradeDirection = tp > entry ? "LONG 📈" : "SHORT 📉";
+
+    let riskAmount = (balance * riskPercent) / 100;
+    let riskPerUnit = Math.abs(entry - sl);
+    let rewardPerUnit = Math.abs(tp - entry);
+
+    let positionSize = riskAmount / riskPerUnit;
+    let marginRequired = positionSize * entry / leverage;
+    let rr = (rewardPerUnit / riskPerUnit).toFixed(2);
+
+    let lotSize = type === "Forex" ? (positionSize / 100000).toFixed(4) : "N/A";
+
+    let resultText =
+        "Trade Type: " + type + "<br>" +
+        "Direction: " + tradeDirection + "<br>" +
+        "Risk Amount: " + riskAmount.toFixed(2) + " " + currency + "<br>" +
+        "Position Size: " + positionSize.toFixed(4) + "<br>" +
+        "Forex Lot Size: " + lotSize + "<br>" +
+        "Margin Required: " + marginRequired.toFixed(2) + " " + currency + "<br>" +
+        "Risk/Reward Ratio: 1 : " + rr;
+
+    document.getElementById("output").innerHTML = resultText;
+
+    saveHistory(resultText);
+}
+
+function saveHistory(text) {
+    let history = JSON.parse(localStorage.getItem("trades")) || [];
+    history.unshift(text);
+    localStorage.setItem("trades", JSON.stringify(history));
+    displayHistory();
+}
+
+function displayHistory() {
+    let history = JSON.parse(localStorage.getItem("trades")) || [];
+    let html = "";
+    history.forEach(trade => {
+        html += "<div style='margin-bottom:10px;border-bottom:1px solid white;padding-bottom:5px'>" + trade + "</div>";
+    });
+    document.getElementById("historyList").innerHTML = html;
+}
+
+displayHistory();
+</script>
+
+</body>
+</html>
